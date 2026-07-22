@@ -66,16 +66,18 @@ app.get('/api/fantasmas', (req, res) => {
 });
 
 // ========== RUTA PARA INVOCAR UN FANTASMA ==========
-// ¡¡¡ESTA ES LA RUTA QUE DEBE ESTAR EN EL SERVIDOR!!!
 app.post('/api/invocar/:idFantasma', (req, res) => {
+    console.log('🔍 Ruta /api/invocar/ ha sido llamada');
     const id = parseInt(req.params.idFantasma);
+    console.log(`🔍 Buscando fantasma con ID: ${id}`);
+    
     const fantasma = fantasmas.find(f => f.id === id);
-
     if (!fantasma) {
+        console.log(`❌ Fantasma con ID ${id} NO encontrado`);
         return res.status(404).json({ error: 'Fantasma no encontrado' });
     }
 
-    // Calcular buff según el estilo
+    console.log(`✅ Fantasma encontrado: ${fantasma.nombreOriginal}`);
     let buff = {};
     switch (fantasma.estilo) {
         case 'agresivo': buff = { ataqueExtra: 5, velocidadExtra: 2 }; break;
@@ -90,7 +92,6 @@ app.post('/api/invocar/:idFantasma', (req, res) => {
     });
 });
 
-// Iniciar el servidor
 app.listen(PORT, () => {
     console.log(`🚀 Servidor con FANTASMAS rodando en puerto ${PORT}`);
     console.log(`📡 Ruta de invocación: /api/invocar/:id`);
