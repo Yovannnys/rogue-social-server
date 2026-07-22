@@ -4,7 +4,7 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
-// ========== BASES DE DATOS EN MEMORIA ==========
+// ========== BASES DE DATOS ==========
 const jugadores = {};
 const fantasmas = [];
 let contadorId = 1;
@@ -38,7 +38,7 @@ app.get('/api/jugadores', (req, res) => {
     res.json(Object.values(jugadores));
 });
 
-// ========== 🆕 RUTA PARA CREAR UN FANTASMA ==========
+// ========== RUTAS DE FANTASMAS ==========
 app.post('/api/fantasma', (req, res) => {
     const { nombreOriginal, estilo, nivel, ataque, vida } = req.body;
 
@@ -49,7 +49,7 @@ app.post('/api/fantasma', (req, res) => {
     const nuevoFantasma = {
         id: contadorFantasma++,
         nombreOriginal: nombreOriginal,
-        estilo: estilo, // 'agresivo', 'curandero' o 'tactico'
+        estilo: estilo,
         nivel: nivel || 1,
         ataque: ataque || 10,
         vida: vida || 80,
@@ -61,12 +61,10 @@ app.post('/api/fantasma', (req, res) => {
     res.json({ mensaje: 'Fantasma creado con éxito', fantasma: nuevoFantasma });
 });
 
-// ========== 🆕 RUTA PARA LISTAR FANTASMAS ==========
 app.get('/api/fantasmas', (req, res) => {
     res.json(fantasmas);
 });
 
-// ========== 🆕 RUTA PARA INVOCAR UN FANTASMA (simula buff) ==========
 app.post('/api/invocar/:idFantasma', (req, res) => {
     const id = parseInt(req.params.idFantasma);
     const fantasma = fantasmas.find(f => f.id === id);
@@ -75,7 +73,6 @@ app.post('/api/invocar/:idFantasma', (req, res) => {
         return res.status(404).json({ error: 'Fantasma no encontrado' });
     }
 
-    // Calcular buff según el estilo
     let buff = {};
     switch (fantasma.estilo) {
         case 'agresivo': buff = { ataqueExtra: 5, velocidadExtra: 2 }; break;
@@ -90,7 +87,6 @@ app.post('/api/invocar/:idFantasma', (req, res) => {
     });
 });
 
-// Iniciar el servidor
 app.listen(PORT, () => {
     console.log(`🚀 Servidor con FANTASMAS rodando en puerto ${PORT}`);
 });
