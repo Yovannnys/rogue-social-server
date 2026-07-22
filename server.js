@@ -2,99 +2,95 @@ const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ========== MIDDLEWARE ==========
 app.use(express.json());
 
-// ========== BASE DE DATOS EN MEMORIA ==========
+// ========== BASES DE DATOS EN MEMORIA ==========
 const jugadores = {};
+const fantasmas = [];
 let contadorId = 1;
+let contadorFantasma = 1;
 
-// ========== RUTAS ==========
-
-// Ruta principal
+// ========== RUTAS PRINCIPALES ==========
 app.get('/', (req, res) => {
     res.send(`
         <h1>🎮 Rogue-Social Server</h1>
-        <p>✅ Servidor funcionando perfeitamente!</p>
-        <p>Hora atual: ${new Date().toLocaleString()}</p>
-        <hr>
-        <p><strong>Jogadores conectados:</strong> ${Object.keys(jugadores).length}</p>
-        <p><strong>Fantasmas criados:</strong> 0 (por enquanto)</p>
+        <p>✅ Servidor con sistema de FANTASMAS!</p>
+        <p>Jugadores: ${Object.keys(jugadores).length} | Fantasmas: ${fantasmas.length}</p>
     `);
 });
 
-// Ruta para testar JSON
 app.get('/api/estado', (req, res) => {
-    res.json({
-        estado: 'online',
-        mensagem: 'Servidor funcionando corretamente',
-        timestamp: new Date().toISOString()
-    });
+    res.json({ estado: 'online', mensagem: 'Servidor con fantasmas!', timestamp: new Date().toISOString() });
 });
 
-// ========== CREAR UN NUEVO JUGADOR ==========
+// ========== RUTAS DE JUGADORES ==========
 app.post('/api/jugador', (req, res) => {
     const { nombre } = req.body;
-
-    if (!nombre) {
-        return res.status(400).json({ error: 'Nombre es obligatorio' });
-    }
+    if (!nombre) return res.status(400).json({ error: 'Nombre es obligatorio' });
 
     const id = contadorId++;
-    jugadores[id] = {
-        id: id,
-        nombre: nombre,
-        vida: 100,
-        oro: 50,
-        x: 0,
-        y: 0
-    };
-
+    jugadores[id] = { id, nombre, vida: 100, oro: 50, x: 0, y: 0 };
     console.log(`✅ Nuevo jugador: ${nombre} (ID: ${id})`);
-    res.json({
-        mensaje: 'Jugador creado con éxito',
-        jugador: jugadores[id]
-    });
+    res.json({ mensaje: 'Jugador creado', jugador: jugadores[id] });
 });
 
-// ========== OBTENER TODOS LOS JUGADORES ==========
 app.get('/api/jugadores', (req, res) => {
     res.json(Object.values(jugadores));
 });
 
-// ========== OBTENER UN JUGADOR POR ID ==========
-app.get('/api/jugador/:id', (req, res) => {
-    const id = parseInt(req.params.id);
-    const jugador = jugadores[id];
+// ========== 🆕 RUTA PARA CREAR UN FANTASMA ==========
+app.post('/api/fantasma', (req, res) => {
+    const { nombreOriginal, estilo, nivel, ataque, vida } = req.body;
 
-    if (!jugador) {
-        return res.status(404).json({ error: 'Jugador no encontrado' });
+    if (!nombreOriginal || !estilo) {
+        return res.status(400).json({ error: 'Faltan datos del fantasma' });
     }
 
-    res.json(jugador);
+    const nuevoFantasma = {
+        id: contadorFantasma++,
+        nombreOriginal: nombreOriginal,
+        estilo: estilo, // 'agresivo', 'curandero' o 'tactico'
+        nivel: nivel || 1,
+        ataque: ataque || 10,
+        vida: vida || 80,
+        fecha: new Date().toISOString()
+    };
+
+    fantasmas.push(nuevoFantasma);
+    console.log(`👻 Nuevo fantasma: ${nombreOriginal} (${estilo})`);
+    res.json({ mensaje: 'Fantasma creado con éxito', fantasma: nuevoFantasma });
 });
 
-// ========== ACTUALIZAR POSICIÓN DEL JUGADOR ==========
-app.put('/api/jugador/:id/posicion', (req, res) => {
-    const id = parseInt(req.params.id);
-    const { x, y } = req.body;
+// ========== 🆕 RUTA PARA LISTAR FANTASMAS ==========
+app.get('/api/fantasmas', (req, res) => {
+    res.json(fantasmas);
+});
 
-    if (!jugadores[id]) {
-        return res.status(404).json({ error: 'Jugador no encontrado' });
+// ========== 🆕 RUTA PARA INVOCAR UN FANTASMA (simula buff) ==========
+app.post('/api/invocar/:idFantasma', (req, res) => {
+    const id = parseInt(req.params.idFantasma);
+    const fantasma = fantasmas.find(f => f.id === id);
+
+    if (!fantasma) {
+        return res.status(404).json({ error: 'Fantasma no encontrado' });
     }
 
-    jugadores[id].x = x;
-    jugadores[id].y = y;
+    // Calcular buff según el estilo
+    let buff = {};
+    switch (fantasma.estilo) {
+        case 'agresivo': buff = { ataqueExtra: 5, velocidadExtra: 2 }; break;
+        case 'curandero': buff = { vidaExtra: 20, pocionesExtra: 2 }; break;
+        case 'tactico': buff = { defensaExtra: 3, evasionExtra: 10 }; break;
+        default: buff = { ataqueExtra: 2, defensaExtra: 2 };
+    }
 
-    console.log(`📍 ${jugadores[id].nombre} movido a (${x}, ${y})`);
     res.json({
-        mensaje: 'Posición actualizada',
-        jugador: jugadores[id]
+        mensaje: `Has invocado a ${fantasma.nombreOriginal} (${fantasma.estilo})`,
+        buff: buff
     });
 });
 
 // Iniciar el servidor
 app.listen(PORT, () => {
-    console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
-    console.log(`📡 Teste: http://localhost:${PORT}/api/estado`);
+    console.log(`🚀 Servidor con FANTASMAS rodando en puerto ${PORT}`);
 });
