@@ -4,9 +4,59 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
-// ========== BASES DE DATOS ==========
+// ========== BASES DE DATOS EN MEMORIA ==========
 const jugadores = {};
 const fantasmas = [];
+const recursos = {};
+
+// ========== RECURSOS Y MUNDOS ==========
+const mundos = {
+    'fuego': {
+        nombre: 'Mundo de Fuego',
+        recursos: ['Mineral de Fuego', 'Carbón', 'Azufre'],
+        descripcion: 'Un mundo ardiente lleno de minerales y recursos volcánicos.'
+    },
+    'hielo': {
+        nombre: 'Mundo de Hielo',
+        recursos: ['Cristal de Hielo', 'Agua Pura', 'Plata'],
+        descripcion: 'Un mundo helado donde se encuentran gemas y metales preciosos.'
+    },
+    'bosque': {
+        nombre: 'Mundo del Bosque',
+        recursos: ['Madera Élfica', 'Piedra Lunar', 'Hierbas Curativas'],
+        descripcion: 'Un bosque antiguo lleno de recursos mágicos y naturales.'
+    },
+    'desierto': {
+        nombre: 'Mundo del Desierto',
+        recursos: ['Oro del Desierto', 'Esencia Solar', 'Metal de Arena'],
+        descripcion: 'Un desierto interminable con recursos raros y valiosos.'
+    }
+};
+
+// ========== INICIALIZAR RECURSOS DE JUGADORES ==========
+function inicializarRecursosJugador(idJugador) {
+    if (!recursos[idJugador]) {
+        recursos[idJugador] = {
+            'Mineral de Fuego': 0,
+            'Carbón': 0,
+            'Azufre': 0,
+            'Cristal de Hielo': 0,
+            'Agua Pura': 0,
+            'Plata': 0,
+            'Madera Élfica': 0,
+            'Piedra Lunar': 0,
+            'Hierbas Curativas': 0,
+            'Oro del Desierto': 0,
+            'Esencia Solar': 0,
+            'Metal de Arena': 0,
+            'Energía Espectral': 100,
+            'Monedas Premium': 0
+        };
+    }
+    return recursos[idJugador];
+}
+
+// ========== CONTADORES ==========
 let contadorId = 1;
 let contadorFantasma = 1;
 
@@ -14,16 +64,13 @@ let contadorFantasma = 1;
 app.get('/', (req, res) => {
     res.send(`
         <h1>🎮 Rogue-Social Server</h1>
-        <p>✅ Servidor con sistema de FANTASMAS MEJORADO!</p>
+        <p>✅ Sistema de RECURSOS y MUNDOS activo</p>
         <p>Jugadores: ${Object.keys(jugadores).length}</p>
         <p>Fantasmas: ${fantasmas.length}</p>
         <hr>
-        <p>Rutas disponibles:</p>
+        <p><strong>Mundos disponibles:</strong></p>
         <ul>
-            <li><a href="/api/estado">/api/estado</a></li>
-            <li><a href="/api/jugadores">/api/jugadores</a></li>
-            <li><a href="/api/fantasmas">/api/fantasmas</a></li>
-            <li><a href="/api/invocar/1">/api/invocar/1</a></li>
+            ${Object.values(mundos).map(m => `<li>${m.nombre}: ${m.recursos.join(', ')}</li>`).join('')}
         </ul>
     `);
 });
@@ -31,6 +78,7 @@ app.get('/', (req, res) => {
 app.get('/api/estado', (req, res) => {
     res.json({
         estado: 'online',
+        mundos: mundos,
         timestamp: new Date().toISOString()
     });
 });
@@ -47,15 +95,20 @@ app.post('/api/jugador', (req, res) => {
         id: id,
         nombre: nombre,
         vida: 100,
-        oro: 50,
-        x: 0,
-        y: 0
+        nivel: 1,
+        mundoActual: 'fuego',
+        energiaEspectral: 100,
+        monedasPremium: 0
     };
+
+    // Inicializar recursos
+    inicializarRecursosJugador(id);
 
     console.log(`✅ Jugador creado: ${nombre} (ID: ${id})`);
     res.json({
         mensaje: 'Jugador creado',
-        jugador: jugadores[id]
+        jugador: jugadores[id],
+        recursos: recursos[id]
     });
 });
 
@@ -63,7 +116,69 @@ app.get('/api/jugadores', (req, res) => {
     res.json(Object.values(jugadores));
 });
 
-// ========== RUTAS DE FANTASMAS MEJORADAS ==========
+app.get('/api/jugador/:id', (req, res) => {
+    const id = parseInt(req.params.id);
+    const jugador = jugadores[id];
+    if (!jugador) {
+        return res.status(404).json({ error: 'Jugador no encontrado' });
+    }
+    
+    res.json({
+        jugador: jugador,
+        recursos: recursos[id] || {}
+    });
+});
+
+// ========== RUTAS DE MUNDOS Y RECURSOS ==========
+app.get('/api/mundos', (req, res) => {
+    res.json(mundos);
+});
+
+app.get('/api/mundo/:nombre', (req, res) => {
+    const nombre = req.params.nombre;
+    const mundo = mundos[nombre];
+    if (!mundo) {
+        return res.status(404).json({ error: 'Mundo no encontrado' });
+    }
+    res.json(mundo);
+});
+
+// ========== RECOLECTAR RECURSO ==========
+app.post('/api/recolectar', (req, res) => {
+    const { idJugador, recurso, cantidad } = req.body;
+    
+    if (!idJugador || !recurso || !cantidad) {
+        return res.status(400).json({ error: 'Faltan datos: idJugador, recurso, cantidad' });
+    }
+
+    const jugador = jugadores[idJugador];
+    if (!jugador) {
+        return res.status(404).json({ error: 'Jugador no encontrado' });
+    }
+
+    // Verificar que el recurso existe en el mundo actual del jugador
+    const mundoActual = mundos[jugador.mundoActual];
+    if (!mundoActual || !mundoActual.recursos.includes(recurso)) {
+        return res.status(400).json({ error: `El recurso ${recurso} no existe en ${mundoActual?.nombre || 'este mundo'}` });
+    }
+
+    // Inicializar recursos del jugador si no existen
+    if (!recursos[idJugador]) {
+        inicializarRecursosJugador(idJugador);
+    }
+
+    // Añadir recurso
+    recursos[idJugador][recurso] = (recursos[idJugador][recurso] || 0) + cantidad;
+    
+    console.log(`📦 ${jugador.nombre} recolectó ${cantidad} de ${recurso}`);
+    res.json({
+        mensaje: `Recolectaste ${cantidad} de ${recurso}`,
+        jugador: jugador,
+        recursos: recursos[idJugador]
+    });
+});
+
+// ========== RUTAS DE FANTASMAS ==========
 app.post('/api/fantasma', (req, res) => {
     const { nombreOriginal, estilo, jugadorId } = req.body;
 
@@ -71,7 +186,6 @@ app.post('/api/fantasma', (req, res) => {
         return res.status(400).json({ error: 'Faltan datos del fantasma' });
     }
 
-    // Configuración según el estilo
     const config = {
         'agresivo': { color: '#FF0000', emoji: '⚔️', ataque: 20, defensa: 5, vida: 100 },
         'curandero': { color: '#00FF00', emoji: '💚', ataque: 5, defensa: 10, vida: 120 },
@@ -87,7 +201,7 @@ app.post('/api/fantasma', (req, res) => {
         id: contadorFantasma++,
         nombreOriginal: nombreOriginal,
         estilo: estilo,
-        jugadorId: jugadorId || 0, // ID del jugador que creó el fantasma
+        jugadorId: jugadorId || 0,
         color: stats.color,
         emoji: stats.emoji,
         ataque: stats.ataque,
@@ -109,7 +223,7 @@ app.get('/api/fantasmas', (req, res) => {
     res.json(fantasmas);
 });
 
-// ========== RUTA DE INVOCACIÓN MEJORADA ==========
+// ========== RUTA DE INVOCACIÓN ==========
 app.get('/api/invocar/:idFantasma', (req, res) => {
     const id = parseInt(req.params.idFantasma);
     const fantasma = fantasmas.find(f => f.id === id);
@@ -118,7 +232,6 @@ app.get('/api/invocar/:idFantasma', (req, res) => {
         return res.status(404).json({ error: 'Fantasma no encontrado' });
     }
 
-    // Buff mejorado según el estilo
     let buff = {};
     switch (fantasma.estilo) {
         case 'agresivo': buff = { ataqueExtra: 10, velocidadExtra: 3 }; break;
@@ -139,6 +252,6 @@ app.get('/api/invocar/:idFantasma', (req, res) => {
 
 // ========== INICIAR SERVIDOR ==========
 app.listen(PORT, () => {
-    console.log(`🚀 Servidor con FANTASMAS MEJORADOS rodando en puerto ${PORT}`);
-    console.log(`📡 Ruta de invocación: /api/invocar/:id`);
+    console.log(`🚀 Servidor con RECURSOS y MUNDOS rodando en puerto ${PORT}`);
+    console.log(`📡 Mundos disponibles: ${Object.keys(mundos).join(', ')}`);
 });
