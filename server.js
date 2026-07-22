@@ -2,6 +2,7 @@ const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Middleware para parsear JSON
 app.use(express.json());
 
 // ========== BASES DE DATOS EN MEMORIA ==========
@@ -16,6 +17,13 @@ app.get('/', (req, res) => {
         <h1>🎮 Rogue-Social Server</h1>
         <p>✅ Servidor con sistema de FANTASMAS!</p>
         <p>Jugadores: ${Object.keys(jugadores).length} | Fantasmas: ${fantasmas.length}</p>
+        <p>📡 Rutas disponibles:</p>
+        <ul>
+            <li>/api/estado</li>
+            <li>/api/jugadores</li>
+            <li>/api/fantasmas</li>
+            <li>/api/invocar/:id</li>
+        </ul>
     `);
 });
 
@@ -66,6 +74,7 @@ app.get('/api/fantasmas', (req, res) => {
 });
 
 // ========== RUTA PARA INVOCAR UN FANTASMA ==========
+// ¡¡¡ESTA RUTA DEBE FUNCIONAR!!!
 app.post('/api/invocar/:idFantasma', (req, res) => {
     console.log('🔍 Ruta /api/invocar/ ha sido llamada');
     const id = parseInt(req.params.idFantasma);
@@ -92,7 +101,9 @@ app.post('/api/invocar/:idFantasma', (req, res) => {
     });
 });
 
+// ========== INICIAR EL SERVIDOR ==========
 app.listen(PORT, () => {
     console.log(`🚀 Servidor con FANTASMAS rodando en puerto ${PORT}`);
     console.log(`📡 Ruta de invocación: /api/invocar/:id`);
+    console.log(`✅ Todas las rutas han sido cargadas correctamente.`);
 });
