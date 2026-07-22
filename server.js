@@ -1,6 +1,6 @@
 const express = require('express');
 const app = express();
-const PORT = process.env.PORT || 3000; // ¡Render asigna el puerto automáticamente!
+const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
@@ -23,7 +23,7 @@ app.get('/', (req, res) => {
             <li><a href="/api/estado">/api/estado</a></li>
             <li><a href="/api/jugadores">/api/jugadores</a></li>
             <li><a href="/api/fantasmas">/api/fantasmas</a></li>
-            <li>/api/invocar/:id</li>
+            <li><a href="/api/invocar/1">/api/invocar/1</a></li>
         </ul>
     `);
 });
@@ -93,21 +93,27 @@ app.get('/api/fantasmas', (req, res) => {
     res.json(fantasmas);
 });
 
-// ========== RUTA DE INVOCACIÓN ==========
-app.post('/api/invocar/:idFantasma', (req, res) => {
-    console.log(`🔍 Intentando invocar al ID: ${req.params.idFantasma}`);
+// ========== RUTA DE INVOCACIÓN (MUY SIMPLE) ==========
+// ¡¡¡ESTA RUTA DEBE SER CLICKEABLE!!!
+app.get('/api/invocar/1', (req, res) => {
+    console.log('🔍 Ruta /api/invocar/1 ha sido llamada');
+    res.json({
+        mensaje: 'Ruta de invocación funcionando',
+        id: 1
+    });
+});
+
+// ========== RUTA DE INVOCACIÓN DINÁMICA (CON PARÁMETRO) ==========
+app.get('/api/invocar/:idFantasma', (req, res) => {
+    console.log(`🔍 Ruta /api/invocar/:id llamada con ID: ${req.params.idFantasma}`);
     
     const id = parseInt(req.params.idFantasma);
     const fantasma = fantasmas.find(f => f.id === id);
 
     if (!fantasma) {
-        console.log(`❌ Fantasma ID ${id} no encontrado`);
         return res.status(404).json({ error: 'Fantasma no encontrado' });
     }
 
-    console.log(`✅ Fantasma encontrado: ${fantasma.nombreOriginal}`);
-
-    // Calcular buff
     let buff = {};
     if (fantasma.estilo === 'agresivo') {
         buff = { ataqueExtra: 5, velocidadExtra: 2 };
