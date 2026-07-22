@@ -14,7 +14,7 @@ let contadorFantasma = 1;
 app.get('/', (req, res) => {
     res.send(`
         <h1>🎮 Rogue-Social Server</h1>
-        <p>✅ Servidor funcionando en puerto ${PORT}</p>
+        <p>✅ Servidor con sistema de FANTASMAS MEJORADO!</p>
         <p>Jugadores: ${Object.keys(jugadores).length}</p>
         <p>Fantasmas: ${fantasmas.length}</p>
         <hr>
@@ -63,7 +63,7 @@ app.get('/api/jugadores', (req, res) => {
     res.json(Object.values(jugadores));
 });
 
-// ========== RUTAS DE FANTASMAS ==========
+// ========== RUTAS DE FANTASMAS MEJORADAS ==========
 app.post('/api/fantasma', (req, res) => {
     const { nombreOriginal, estilo } = req.body;
 
@@ -71,18 +71,33 @@ app.post('/api/fantasma', (req, res) => {
         return res.status(400).json({ error: 'Faltan datos del fantasma' });
     }
 
+    // Configuración según el estilo
+    const config = {
+        'agresivo': { color: '#FF0000', emoji: '⚔️', ataque: 20, defensa: 5 },
+        'curandero': { color: '#00FF00', emoji: '💚', ataque: 5, defensa: 10 },
+        'tactico': { color: '#0000FF', emoji: '🧠', ataque: 10, defensa: 15 },
+        'veloz': { color: '#FFAA00', emoji: '⚡', ataque: 15, defensa: 5 },
+        'tank': { color: '#AAAAAA', emoji: '🛡️', ataque: 5, defensa: 25 },
+        'magico': { color: '#AA00FF', emoji: '🔮', ataque: 25, defensa: 0 }
+    };
+
+    const stats = config[estilo] || config['agresivo'];
+
     const nuevoFantasma = {
         id: contadorFantasma++,
         nombreOriginal: nombreOriginal,
         estilo: estilo,
+        color: stats.color,
+        emoji: stats.emoji,
+        ataque: stats.ataque,
+        defensa: stats.defensa,
         nivel: 1,
-        ataque: 15,
-        vida: 80,
+        vida: 100 + (stats.defensa * 2),
         fecha: new Date().toISOString()
     };
 
     fantasmas.push(nuevoFantasma);
-    console.log(`👻 Fantasma creado: ${nombreOriginal} (${estilo})`);
+    console.log(`👻 Nuevo fantasma: ${nombreOriginal} (${estilo}) - ${stats.emoji}`);
     res.json({
         mensaje: 'Fantasma creado',
         fantasma: nuevoFantasma
@@ -93,20 +108,8 @@ app.get('/api/fantasmas', (req, res) => {
     res.json(fantasmas);
 });
 
-// ========== RUTA DE INVOCACIÓN (MUY SIMPLE) ==========
-// ¡¡¡ESTA RUTA DEBE SER CLICKEABLE!!!
-app.get('/api/invocar/1', (req, res) => {
-    console.log('🔍 Ruta /api/invocar/1 ha sido llamada');
-    res.json({
-        mensaje: 'Ruta de invocación funcionando',
-        id: 1
-    });
-});
-
-// ========== RUTA DE INVOCACIÓN DINÁMICA (CON PARÁMETRO) ==========
+// ========== RUTA DE INVOCACIÓN MEJORADA ==========
 app.get('/api/invocar/:idFantasma', (req, res) => {
-    console.log(`🔍 Ruta /api/invocar/:id llamada con ID: ${req.params.idFantasma}`);
-    
     const id = parseInt(req.params.idFantasma);
     const fantasma = fantasmas.find(f => f.id === id);
 
@@ -114,25 +117,26 @@ app.get('/api/invocar/:idFantasma', (req, res) => {
         return res.status(404).json({ error: 'Fantasma no encontrado' });
     }
 
+    // Buff mejorado según el estilo
     let buff = {};
-    if (fantasma.estilo === 'agresivo') {
-        buff = { ataqueExtra: 5, velocidadExtra: 2 };
-    } else if (fantasma.estilo === 'curandero') {
-        buff = { vidaExtra: 20, pocionesExtra: 2 };
-    } else if (fantasma.estilo === 'tactico') {
-        buff = { defensaExtra: 3, evasionExtra: 10 };
-    } else {
-        buff = { ataqueExtra: 2, defensaExtra: 2 };
+    switch (fantasma.estilo) {
+        case 'agresivo': buff = { ataqueExtra: 10, velocidadExtra: 3 }; break;
+        case 'curandero': buff = { vidaExtra: 30, pocionesExtra: 3 }; break;
+        case 'tactico': buff = { defensaExtra: 5, evasionExtra: 15 }; break;
+        case 'veloz': buff = { velocidadExtra: 10, evasionExtra: 20 }; break;
+        case 'tank': buff = { defensaExtra: 10, vidaExtra: 50 }; break;
+        case 'magico': buff = { ataqueExtra: 15, pocionesExtra: 2 }; break;
+        default: buff = { ataqueExtra: 5, defensaExtra: 5 };
     }
 
     res.json({
-        mensaje: `Has invocado a ${fantasma.nombreOriginal} (${fantasma.estilo})`,
+        mensaje: `Has invocado a ${fantasma.nombreOriginal} (${fantasma.estilo}) ${fantasma.emoji}`,
+        fantasma: fantasma,
         buff: buff
     });
 });
 
 // ========== INICIAR SERVIDOR ==========
 app.listen(PORT, () => {
-    console.log(`🚀 Servidor rodando en puerto ${PORT}`);
-    console.log(`📡 Ruta de invocación: /api/invocar/:id`);
+    console.log(`🚀 Servidor con FANTASMAS MEJORADOS rodando en puerto ${PORT}`);
 });
