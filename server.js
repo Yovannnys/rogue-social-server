@@ -1,8 +1,7 @@
 const express = require('express');
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000; // ¡Render asigna el puerto automáticamente!
 
-// Middleware para parsear JSON
 app.use(express.json());
 
 // ========== BASES DE DATOS ==========
@@ -15,7 +14,7 @@ let contadorFantasma = 1;
 app.get('/', (req, res) => {
     res.send(`
         <h1>🎮 Rogue-Social Server</h1>
-        <p>✅ Servidor funcionando</p>
+        <p>✅ Servidor funcionando en puerto ${PORT}</p>
         <p>Jugadores: ${Object.keys(jugadores).length}</p>
         <p>Fantasmas: ${fantasmas.length}</p>
         <hr>
@@ -94,7 +93,7 @@ app.get('/api/fantasmas', (req, res) => {
     res.json(fantasmas);
 });
 
-// ========== RUTA DE INVOCACIÓN (LA QUE FALTA) ==========
+// ========== RUTA DE INVOCACIÓN ==========
 app.post('/api/invocar/:idFantasma', (req, res) => {
     console.log(`🔍 Intentando invocar al ID: ${req.params.idFantasma}`);
     
