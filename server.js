@@ -65,7 +65,7 @@ app.get('/api/jugadores', (req, res) => {
 
 // ========== RUTAS DE FANTASMAS MEJORADAS ==========
 app.post('/api/fantasma', (req, res) => {
-    const { nombreOriginal, estilo } = req.body;
+    const { nombreOriginal, estilo, jugadorId } = req.body;
 
     if (!nombreOriginal || !estilo) {
         return res.status(400).json({ error: 'Faltan datos del fantasma' });
@@ -73,12 +73,12 @@ app.post('/api/fantasma', (req, res) => {
 
     // Configuración según el estilo
     const config = {
-        'agresivo': { color: '#FF0000', emoji: '⚔️', ataque: 20, defensa: 5 },
-        'curandero': { color: '#00FF00', emoji: '💚', ataque: 5, defensa: 10 },
-        'tactico': { color: '#0000FF', emoji: '🧠', ataque: 10, defensa: 15 },
-        'veloz': { color: '#FFAA00', emoji: '⚡', ataque: 15, defensa: 5 },
-        'tank': { color: '#AAAAAA', emoji: '🛡️', ataque: 5, defensa: 25 },
-        'magico': { color: '#AA00FF', emoji: '🔮', ataque: 25, defensa: 0 }
+        'agresivo': { color: '#FF0000', emoji: '⚔️', ataque: 20, defensa: 5, vida: 100 },
+        'curandero': { color: '#00FF00', emoji: '💚', ataque: 5, defensa: 10, vida: 120 },
+        'tactico': { color: '#0000FF', emoji: '🧠', ataque: 10, defensa: 15, vida: 90 },
+        'veloz': { color: '#FFAA00', emoji: '⚡', ataque: 15, defensa: 5, vida: 80 },
+        'tank': { color: '#AAAAAA', emoji: '🛡️', ataque: 5, defensa: 25, vida: 150 },
+        'magico': { color: '#AA00FF', emoji: '🔮', ataque: 25, defensa: 0, vida: 70 }
     };
 
     const stats = config[estilo] || config['agresivo'];
@@ -87,12 +87,13 @@ app.post('/api/fantasma', (req, res) => {
         id: contadorFantasma++,
         nombreOriginal: nombreOriginal,
         estilo: estilo,
+        jugadorId: jugadorId || 0, // ID del jugador que creó el fantasma
         color: stats.color,
         emoji: stats.emoji,
         ataque: stats.ataque,
         defensa: stats.defensa,
+        vida: stats.vida,
         nivel: 1,
-        vida: 100 + (stats.defensa * 2),
         fecha: new Date().toISOString()
     };
 
@@ -139,4 +140,5 @@ app.get('/api/invocar/:idFantasma', (req, res) => {
 // ========== INICIAR SERVIDOR ==========
 app.listen(PORT, () => {
     console.log(`🚀 Servidor con FANTASMAS MEJORADOS rodando en puerto ${PORT}`);
+    console.log(`📡 Ruta de invocación: /api/invocar/:id`);
 });
