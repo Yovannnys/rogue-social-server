@@ -66,6 +66,7 @@ app.get('/api/fantasmas', (req, res) => {
 });
 
 // ========== RUTA PARA INVOCAR UN FANTASMA ==========
+// ¡¡¡ESTA ES LA RUTA QUE DEBE ESTAR EN EL SERVIDOR!!!
 app.post('/api/invocar/:idFantasma', (req, res) => {
     const id = parseInt(req.params.idFantasma);
     const fantasma = fantasmas.find(f => f.id === id);
@@ -92,5 +93,5 @@ app.post('/api/invocar/:idFantasma', (req, res) => {
 // Iniciar el servidor
 app.listen(PORT, () => {
     console.log(`🚀 Servidor con FANTASMAS rodando en puerto ${PORT}`);
-    console.log(`📡 Prueba: /api/fantasmas`);
+    console.log(`📡 Ruta de invocación: /api/invocar/:id`);
 });
