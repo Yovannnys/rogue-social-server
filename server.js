@@ -4,7 +4,7 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
-// ========== BASES DE DATOS ==========
+// ========== BASES DE DATOS EN MEMORIA ==========
 const jugadores = {};
 const fantasmas = [];
 let contadorId = 1;
@@ -65,6 +65,7 @@ app.get('/api/fantasmas', (req, res) => {
     res.json(fantasmas);
 });
 
+// ========== RUTA PARA INVOCAR UN FANTASMA ==========
 app.post('/api/invocar/:idFantasma', (req, res) => {
     const id = parseInt(req.params.idFantasma);
     const fantasma = fantasmas.find(f => f.id === id);
@@ -73,6 +74,7 @@ app.post('/api/invocar/:idFantasma', (req, res) => {
         return res.status(404).json({ error: 'Fantasma no encontrado' });
     }
 
+    // Calcular buff según el estilo
     let buff = {};
     switch (fantasma.estilo) {
         case 'agresivo': buff = { ataqueExtra: 5, velocidadExtra: 2 }; break;
@@ -87,6 +89,8 @@ app.post('/api/invocar/:idFantasma', (req, res) => {
     });
 });
 
+// Iniciar el servidor
 app.listen(PORT, () => {
     console.log(`🚀 Servidor con FANTASMAS rodando en puerto ${PORT}`);
+    console.log(`📡 Prueba: /api/fantasmas`);
 });
