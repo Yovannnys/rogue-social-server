@@ -6,7 +6,7 @@ app.use(express.json());
 
 // ========== BASES DE DATOS ==========
 const jugadores = {};
-const fantasmas = [];
+const fantasmas = {};
 const recursos = {};
 let contadorId = 1;
 let contadorFantasma = 1;
@@ -62,9 +62,9 @@ function inicializarRecursosJugador(idJugador) {
 app.get('/', (req, res) => {
     res.send(`
         <h1> Rogue-Social Server</h1>
-        <p> Sistema de RECURSOS y MUNDOS activo</p>
+        <p> Sistema de RECURSOS, MUNDOS y VIAJES activo</p>
         <p>Jugadores: ${Object.keys(jugadores).length}</p>
-        <p>Fantasmas: ${fantasmas.length}</p>
+        <p>Fantasmas: ${Object.keys(fantasmas).length}</p>
         <hr>
         <p><strong>Mundos disponibles:</strong></p>
         <ul>
@@ -94,7 +94,7 @@ app.post('/api/jugador', (req, res) => {
         nombre: nombre,
         vida: 100,
         nivel: 1,
-        mundoActual: 'fuego',
+        mundoActual: 'fuego', // <--- MUNDO INICIAL
         energiaEspectral: 100,
         monedasPremium: 0
     };
@@ -139,13 +139,47 @@ app.get('/api/mundo/:nombre', (req, res) => {
     res.json(mundo);
 });
 
-// ========== RUTA DE RECOLECCIÓN (CORREGIDA) ==========
-app.post('/api/recolectar', (req, res) => {
-    console.log('📦 Recibida petición de recolección:', req.body);
+// ========== RUTA PARA VIAJAR ENTRE MUNDOS ==========
+app.post('/api/cambiar-mundo', (req, res) => {
+    const { idJugador, nuevoMundo } = req.body;
+
+    // Validar que lleguen los datos
+    if (!idJugador) {
+        return res.status(400).json({ error: 'Falta idJugador' });
+    }
+    if (!nuevoMundo) {
+        return res.status(400).json({ error: 'Falta nuevoMundo' });
+    }
+
+    // Verificar que el jugador existe
+    const jugador = jugadores[idJugador];
+    if (!jugador) {
+        return res.status(404).json({ error: 'Jugador no encontrado' });
+    }
+
+    // Verificar que el mundo existe
+    if (!mundos[nuevoMundo]) {
+        return res.status(400).json({ 
+            error: 'Mundo no encontrado',
+            mundosDisponibles: Object.keys(mundos)
+        });
+    }
+
+    // Cambiar el mundo
+    jugador.mundoActual = nuevoMundo;
     
+    console.log(` Viaje: ${jugador.nombre} viajo a ${mundos[nuevoMundo].nombre}`);
+    res.json({
+        mensaje: `Viajaste a ${mundos[nuevoMundo].nombre}`,
+        jugador: jugador,
+        recursos: recursos[idJugador]
+    });
+});
+
+// ========== RUTA DE RECOLECCIÓN ==========
+app.post('/api/recolectar', (req, res) => {
     const { idJugador, recurso, cantidad } = req.body;
     
-    // Validar que lleguen los datos
     if (!idJugador) {
         return res.status(400).json({ error: 'Falta idJugador' });
     }
@@ -156,13 +190,11 @@ app.post('/api/recolectar', (req, res) => {
         return res.status(400).json({ error: 'Falta cantidad' });
     }
 
-    // Verificar que el jugador existe
     const jugador = jugadores[idJugador];
     if (!jugador) {
         return res.status(404).json({ error: 'Jugador no encontrado' });
     }
 
-    // Verificar que el recurso existe en el mundo actual
     const mundoActual = mundos[jugador.mundoActual];
     if (!mundoActual) {
         return res.status(400).json({ error: 'Mundo actual no encontrado' });
@@ -175,20 +207,19 @@ app.post('/api/recolectar', (req, res) => {
         });
     }
 
-    // Inicializar recursos si no existen
     if (!recursos[idJugador]) {
         inicializarRecursosJugador(idJugador);
     }
 
-    // Añadir recurso
     recursos[idJugador][recurso] = (recursos[idJugador][recurso] || 0) + cantidad;
     
-    console.log(` ${jugador.nombre} recolecto ${cantidad} de ${recurso}`);
+    console.log(` ${jugador.nombre} recolecto ${cantidad} de ${recurso} en ${mundoActual.nombre}`);
     res.json({
-        mensaje: `Recolectaste ${cantidad} de ${recurso}`,
+        mensaje: `Recolectaste ${cantidad} de ${recurso} en ${mundoActual.nombre}`,
         recurso: recurso,
         cantidad: cantidad,
         total: recursos[idJugador][recurso],
+        mundoActual: jugador.mundoActual,
         recursos: recursos[idJugador]
     });
 });
@@ -212,8 +243,9 @@ app.post('/api/fantasma', (req, res) => {
 
     const stats = config[estilo] || config['agresivo'];
 
-    const nuevoFantasma = {
-        id: contadorFantasma++,
+    const id = contadorFantasma++;
+    fantasmas[id] = {
+        id: id,
         nombreOriginal: nombreOriginal,
         estilo: estilo,
         jugadorId: jugadorId || 0,
@@ -226,22 +258,21 @@ app.post('/api/fantasma', (req, res) => {
         fecha: new Date().toISOString()
     };
 
-    fantasmas.push(nuevoFantasma);
     console.log(` Nuevo fantasma: ${nombreOriginal} (${estilo})`);
     res.json({
         mensaje: 'Fantasma creado',
-        fantasma: nuevoFantasma
+        fantasma: fantasmas[id]
     });
 });
 
 app.get('/api/fantasmas', (req, res) => {
-    res.json(fantasmas);
+    res.json(Object.values(fantasmas));
 });
 
 // ========== RUTA DE INVOCACIÓN ==========
 app.get('/api/invocar/:idFantasma', (req, res) => {
     const id = parseInt(req.params.idFantasma);
-    const fantasma = fantasmas.find(f => f.id === id);
+    const fantasma = fantasmas[id];
 
     if (!fantasma) {
         return res.status(404).json({ error: 'Fantasma no encontrado' });
@@ -267,7 +298,6 @@ app.get('/api/invocar/:idFantasma', (req, res) => {
 
 // ========== INICIAR SERVIDOR ==========
 app.listen(PORT, () => {
-    console.log(` Servidor con RECURSOS y MUNDOS rodando en puerto ${PORT}`);
+    console.log(` Servidor con VIAJES rodando en puerto ${PORT}`);
     console.log(` Mundos disponibles: ${Object.keys(mundos).join(', ')}`);
-    console.log(` Ruta de recolección: /api/recolectar`);
 });
