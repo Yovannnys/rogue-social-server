@@ -8,7 +8,7 @@ app.use(express.json());
 const jugadores = {};
 const fantasmas = {};
 const recursos = {};
-const inventario = {};
+const inventario = {}; // Objetos fabricados
 const misiones = {};
 let contadorId = 1;
 let contadorFantasma = 1;
@@ -17,19 +17,23 @@ let contadorFantasma = 1;
 const mundos = {
     'fuego': {
         nombre: 'Mundo de Fuego',
-        recursos: ['Mineral de Fuego', 'Carbon', 'Azufre']
+        recursos: ['Mineral de Fuego', 'Carbon', 'Azufre'],
+        descripcion: 'Un mundo ardiente lleno de minerales y recursos volcanicos.'
     },
     'hielo': {
         nombre: 'Mundo de Hielo',
-        recursos: ['Cristal de Hielo', 'Agua Pura', 'Plata']
+        recursos: ['Cristal de Hielo', 'Agua Pura', 'Plata'],
+        descripcion: 'Un mundo helado donde se encuentran gemas y metales preciosos.'
     },
     'bosque': {
         nombre: 'Mundo del Bosque',
-        recursos: ['Madera Elfica', 'Piedra Lunar', 'Hierbas Curativas']
+        recursos: ['Madera Elfica', 'Piedra Lunar', 'Hierbas Curativas'],
+        descripcion: 'Un bosque antiguo lleno de recursos magicos y naturales.'
     },
     'desierto': {
         nombre: 'Mundo del Desierto',
-        recursos: ['Oro del Desierto', 'Esencia Solar', 'Metal de Arena']
+        recursos: ['Oro del Desierto', 'Esencia Solar', 'Metal de Arena'],
+        descripcion: 'Un desierto interminable con recursos raros y valiosos.'
     }
 };
 
@@ -79,7 +83,7 @@ const misionesDisponibles = {
     }
 };
 
-// ========== INICIALIZAR ==========
+// ========== INICIALIZAR RECURSOS ==========
 function inicializarRecursosJugador(idJugador) {
     if (!recursos[idJugador]) {
         recursos[idJugador] = {
@@ -112,6 +116,7 @@ function inicializarInventario(idJugador) {
 function inicializarMisiones(idJugador) {
     if (!misiones[idJugador]) {
         misiones[idJugador] = {};
+        // Inicializar misiones disponibles
         for (let key in misionesDisponibles) {
             misiones[idJugador][key] = {
                 progreso: 0,
@@ -123,15 +128,23 @@ function inicializarMisiones(idJugador) {
     return misiones[idJugador];
 }
 
-// ========== RUTAS ==========
+// ========== RUTAS PRINCIPALES ==========
 app.get('/', (req, res) => {
     res.send(`
         <h1> Rogue-Social Server</h1>
+        <p> Sistema de FABRICACION y MISIONES activo</p>
         <p>Jugadores: ${Object.keys(jugadores).length}</p>
         <p>Fantasmas: ${Object.keys(fantasmas).length}</p>
         <hr>
-        <p>Recetas: ${Object.keys(recetas).join(', ')}</p>
-        <p>Misiones: ${Object.keys(misionesDisponibles).join(', ')}</p>
+        <p><strong>Mundos disponibles:</strong></p>
+        <ul>
+            ${Object.values(mundos).map(m => `<li>${m.nombre}: ${m.recursos.join(', ')}</li>`).join('')}
+        </ul>
+        <hr>
+        <p><strong>Recetas de fabricacion:</strong></p>
+        <ul>
+            ${Object.keys(recetas).map(r => `<li>${r}: ${recetas[r].descripcion}</li>`).join('')}
+        </ul>
     `);
 });
 
@@ -145,9 +158,12 @@ app.get('/api/estado', (req, res) => {
     });
 });
 
+// ========== RUTAS DE JUGADORES ==========
 app.post('/api/jugador', (req, res) => {
     const { nombre } = req.body;
-    if (!nombre) return res.status(400).json({ error: 'El nombre es obligatorio' });
+    if (!nombre) {
+        return res.status(400).json({ error: 'El nombre es obligatorio' });
+    }
 
     const id = contadorId++;
     jugadores[id] = {
@@ -165,6 +181,7 @@ app.post('/api/jugador', (req, res) => {
     inicializarInventario(id);
     inicializarMisiones(id);
 
+    console.log(` Jugador creado: ${nombre} (ID: ${id})`);
     res.json({
         mensaje: 'Jugador creado',
         jugador: jugadores[id],
@@ -174,10 +191,16 @@ app.post('/api/jugador', (req, res) => {
     });
 });
 
+app.get('/api/jugadores', (req, res) => {
+    res.json(Object.values(jugadores));
+});
+
 app.get('/api/jugador/:id', (req, res) => {
     const id = parseInt(req.params.id);
     const jugador = jugadores[id];
-    if (!jugador) return res.status(404).json({ error: 'Jugador no encontrado' });
+    if (!jugador) {
+        return res.status(404).json({ error: 'Jugador no encontrado' });
+    }
     res.json({
         jugador: jugador,
         recursos: recursos[id] || {},
@@ -186,30 +209,52 @@ app.get('/api/jugador/:id', (req, res) => {
     });
 });
 
-app.get('/api/jugadores', (req, res) => {
-    res.json(Object.values(jugadores));
-});
-
+// ========== RUTAS DE MUNDOS ==========
 app.get('/api/mundos', (req, res) => {
     res.json(mundos);
 });
 
+app.get('/api/mundo/:nombre', (req, res) => {
+    const nombre = req.params.nombre;
+    const mundo = mundos[nombre];
+    if (!mundo) {
+        return res.status(404).json({ error: 'Mundo no encontrado' });
+    }
+    res.json(mundo);
+});
+
+// ========== RUTA PARA VIAJAR ==========
 app.post('/api/cambiar-mundo', (req, res) => {
     const { idJugador, nuevoMundo } = req.body;
-    if (!idJugador || !nuevoMundo) return res.status(400).json({ error: 'Faltan datos' });
+
+    if (!idJugador || !nuevoMundo) {
+        return res.status(400).json({ error: 'Faltan datos' });
+    }
 
     const jugador = jugadores[idJugador];
-    if (!jugador) return res.status(404).json({ error: 'Jugador no encontrado' });
-    if (!mundos[nuevoMundo]) return res.status(400).json({ error: 'Mundo no encontrado' });
+    if (!jugador) {
+        return res.status(404).json({ error: 'Jugador no encontrado' });
+    }
 
+    if (!mundos[nuevoMundo]) {
+        return res.status(400).json({ 
+            error: 'Mundo no encontrado',
+            mundosDisponibles: Object.keys(mundos)
+        });
+    }
+
+    // ========== ACTUALIZAR MISION ==========
     if (misiones[idJugador] && misiones[idJugador]['viajero'] && !misiones[idJugador]['viajero'].completada) {
         misiones[idJugador]['viajero'].progreso += 1;
         if (misiones[idJugador]['viajero'].progreso >= misionesDisponibles['viajero'].objetivo.cantidad) {
             misiones[idJugador]['viajero'].completada = true;
+            console.log(` Mision 'viajero' completada por ${jugador.nombre}`);
         }
     }
 
     jugador.mundoActual = nuevoMundo;
+    
+    console.log(` Viaje: ${jugador.nombre} viajo a ${mundos[nuevoMundo].nombre}`);
     res.json({
         mensaje: `Viajaste a ${mundos[nuevoMundo].nombre}`,
         jugador: jugador,
@@ -218,92 +263,140 @@ app.post('/api/cambiar-mundo', (req, res) => {
     });
 });
 
+// ========== RUTA DE RECOLECCION ==========
 app.post('/api/recolectar', (req, res) => {
     const { idJugador, recurso, cantidad } = req.body;
-    if (!idJugador || !recurso || !cantidad) return res.status(400).json({ error: 'Faltan datos' });
+    
+    if (!idJugador || !recurso || !cantidad) {
+        return res.status(400).json({ error: 'Faltan datos' });
+    }
 
     const jugador = jugadores[idJugador];
-    if (!jugador) return res.status(404).json({ error: 'Jugador no encontrado' });
+    if (!jugador) {
+        return res.status(404).json({ error: 'Jugador no encontrado' });
+    }
 
     const mundoActual = mundos[jugador.mundoActual];
     if (!mundoActual || !mundoActual.recursos.includes(recurso)) {
-        return res.status(400).json({ error: `El recurso ${recurso} no existe en este mundo` });
+        return res.status(400).json({ 
+            error: `El recurso ${recurso} no existe en ${mundoActual?.nombre || 'este mundo'}`
+        });
     }
 
-    if (!recursos[idJugador]) inicializarRecursosJugador(idJugador);
+    if (!recursos[idJugador]) {
+        inicializarRecursosJugador(idJugador);
+    }
 
+    // ========== ACTUALIZAR MISION ==========
     if (misiones[idJugador] && misiones[idJugador]['recolectar_mineral'] && !misiones[idJugador]['recolectar_mineral'].completada) {
         if (recurso === 'Mineral de Fuego') {
             misiones[idJugador]['recolectar_mineral'].progreso += cantidad;
             if (misiones[idJugador]['recolectar_mineral'].progreso >= misionesDisponibles['recolectar_mineral'].objetivo.cantidad) {
                 misiones[idJugador]['recolectar_mineral'].completada = true;
+                console.log(` Mision 'recolectar_mineral' completada por ${jugador.nombre}`);
             }
         }
     }
 
     recursos[idJugador][recurso] = (recursos[idJugador][recurso] || 0) + cantidad;
+    
+    console.log(` ${jugador.nombre} recolecto ${cantidad} de ${recurso} en ${mundoActual.nombre}`);
     res.json({
-        mensaje: `Recolectaste ${cantidad} de ${recurso}`,
+        mensaje: `Recolectaste ${cantidad} de ${recurso} en ${mundoActual.nombre}`,
         recursos: recursos[idJugador],
         misiones: misiones[idJugador]
     });
 });
 
+// ========== RUTA DE FABRICACION ==========
 app.post('/api/fabricar', (req, res) => {
     const { idJugador, recetaNombre } = req.body;
-    if (!idJugador || !recetaNombre) return res.status(400).json({ error: 'Faltan datos' });
+
+    if (!idJugador || !recetaNombre) {
+        return res.status(400).json({ error: 'Faltan datos' });
+    }
 
     const jugador = jugadores[idJugador];
-    if (!jugador) return res.status(404).json({ error: 'Jugador no encontrado' });
+    if (!jugador) {
+        return res.status(404).json({ error: 'Jugador no encontrado' });
+    }
 
     const receta = recetas[recetaNombre];
-    if (!receta) return res.status(400).json({ error: 'Receta no encontrada' });
+    if (!receta) {
+        return res.status(400).json({ 
+            error: 'Receta no encontrada',
+            recetasDisponibles: Object.keys(recetas)
+        });
+    }
 
+    // Verificar si tiene suficientes recursos
     for (let recurso in receta.costo) {
         const cantidadNecesaria = receta.costo[recurso];
         const cantidadActual = recursos[idJugador]?.[recurso] || 0;
         if (cantidadActual < cantidadNecesaria) {
-            return res.status(400).json({ error: `No tienes suficientes ${recurso}` });
+            return res.status(400).json({ 
+                error: `No tienes suficientes ${recurso}. Necesitas ${cantidadNecesaria}`,
+                faltante: recurso
+            });
         }
     }
 
+    // Gastar recursos
     for (let recurso in receta.costo) {
         recursos[idJugador][recurso] -= receta.costo[recurso];
     }
 
-    if (!inventario[idJugador]) inicializarInventario(idJugador);
+    // Añadir objeto al inventario
+    if (!inventario[idJugador]) {
+        inicializarInventario(idJugador);
+    }
     inventario[idJugador][recetaNombre] = (inventario[idJugador][recetaNombre] || 0) + 1;
 
+    // ========== ACTUALIZAR MISION ==========
     if (misiones[idJugador] && misiones[idJugador]['fabricante'] && !misiones[idJugador]['fabricante'].completada) {
         misiones[idJugador]['fabricante'].progreso += 1;
         if (misiones[idJugador]['fabricante'].progreso >= misionesDisponibles['fabricante'].objetivo.cantidad) {
             misiones[idJugador]['fabricante'].completada = true;
+            console.log(` Mision 'fabricante' completada por ${jugador.nombre}`);
         }
     }
 
+    console.log(` ${jugador.nombre} fabrico ${recetaNombre}`);
     res.json({
         mensaje: `Has fabricado ${recetaNombre}`,
+        receta: receta,
         recursos: recursos[idJugador],
         inventario: inventario[idJugador],
         misiones: misiones[idJugador]
     });
 });
 
+// ========== RUTA PARA RECLAMAR MISION ==========
 app.post('/api/reclamar-mision', (req, res) => {
     const { idJugador, misionKey } = req.body;
-    if (!idJugador || !misionKey) return res.status(400).json({ error: 'Faltan datos' });
+
+    if (!idJugador || !misionKey) {
+        return res.status(400).json({ error: 'Faltan datos' });
+    }
 
     const jugador = jugadores[idJugador];
-    if (!jugador) return res.status(404).json({ error: 'Jugador no encontrado' });
+    if (!jugador) {
+        return res.status(404).json({ error: 'Jugador no encontrado' });
+    }
 
     if (!misiones[idJugador] || !misiones[idJugador][misionKey]) {
         return res.status(400).json({ error: 'Mision no encontrada' });
     }
 
     const mision = misiones[idJugador][misionKey];
-    if (!mision.completada) return res.status(400).json({ error: 'Mision no completada' });
-    if (mision.reclamada) return res.status(400).json({ error: 'Mision ya reclamada' });
+    if (!mision.completada) {
+        return res.status(400).json({ error: 'Mision no completada' });
+    }
+    if (mision.reclamada) {
+        return res.status(400).json({ error: 'Mision ya reclamada' });
+    }
 
+    // Entregar recompensa
     const recompensa = misionesDisponibles[misionKey].recompensa;
     for (let recurso in recompensa) {
         if (recursos[idJugador][recurso] !== undefined) {
@@ -316,18 +409,22 @@ app.post('/api/reclamar-mision', (req, res) => {
     mision.reclamada = true;
     jugador.misionesCompletadas += 1;
 
+    console.log(` ${jugador.nombre} reclamo mision '${misionKey}'`);
     res.json({
-        mensaje: 'Mision reclamada!',
+        mensaje: `Mision reclamada!`,
         recompensa: recompensa,
         recursos: recursos[idJugador],
         misiones: misiones[idJugador]
     });
 });
 
-// ========== FANTASMAS ==========
+// ========== RUTAS DE FANTASMAS ==========
 app.post('/api/fantasma', (req, res) => {
     const { nombreOriginal, estilo, jugadorId } = req.body;
-    if (!nombreOriginal || !estilo) return res.status(400).json({ error: 'Faltan datos' });
+
+    if (!nombreOriginal || !estilo) {
+        return res.status(400).json({ error: 'Faltan datos del fantasma' });
+    }
 
     const config = {
         'agresivo': { color: '#FF0000', emoji: '⚔️', ataque: 20, defensa: 5, vida: 100 },
@@ -339,6 +436,7 @@ app.post('/api/fantasma', (req, res) => {
     };
 
     const stats = config[estilo] || config['agresivo'];
+
     const id = contadorFantasma++;
     fantasmas[id] = {
         id: id,
@@ -354,17 +452,25 @@ app.post('/api/fantasma', (req, res) => {
         fecha: new Date().toISOString()
     };
 
-    res.json({ mensaje: 'Fantasma creado', fantasma: fantasmas[id] });
+    console.log(` Nuevo fantasma: ${nombreOriginal} (${estilo})`);
+    res.json({
+        mensaje: 'Fantasma creado',
+        fantasma: fantasmas[id]
+    });
 });
 
 app.get('/api/fantasmas', (req, res) => {
     res.json(Object.values(fantasmas));
 });
 
+// ========== RUTA DE INVOCACION ==========
 app.get('/api/invocar/:idFantasma', (req, res) => {
     const id = parseInt(req.params.idFantasma);
     const fantasma = fantasmas[id];
-    if (!fantasma) return res.status(404).json({ error: 'Fantasma no encontrado' });
+
+    if (!fantasma) {
+        return res.status(404).json({ error: 'Fantasma no encontrado' });
+    }
 
     let buff = {};
     switch (fantasma.estilo) {
@@ -384,6 +490,9 @@ app.get('/api/invocar/:idFantasma', (req, res) => {
     });
 });
 
+// ========== INICIAR SERVIDOR ==========
 app.listen(PORT, () => {
-    console.log(` Servidor con FABRICACION y MISIONES en puerto ${PORT}`);
+    console.log(` Servidor con FABRICACION y MISIONES rodando en puerto ${PORT}`);
+    console.log(` Recetas disponibles: ${Object.keys(recetas).join(', ')}`);
+    console.log(` Misiones disponibles: ${Object.keys(misionesDisponibles).join(', ')}`);
 });
