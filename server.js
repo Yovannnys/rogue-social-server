@@ -8,8 +8,10 @@ app.use(express.json());
 const jugadores = {};
 const fantasmas = {};
 const recursos = {};
-const inventario = {}; // Objetos fabricados
+const inventario = {};
 const misiones = {};
+const resurreccionesDiarias = {};
+const aceleradores = {};
 let contadorId = 1;
 let contadorFantasma = 1;
 
@@ -18,22 +20,26 @@ const mundos = {
     'fuego': {
         nombre: 'Mundo de Fuego',
         recursos: ['Mineral de Fuego', 'Carbon', 'Azufre'],
-        descripcion: 'Un mundo ardiente lleno de minerales y recursos volcanicos.'
+        descripcion: 'Un mundo ardiente lleno de minerales y recursos volcanicos.',
+        bonus: 1.2
     },
     'hielo': {
         nombre: 'Mundo de Hielo',
         recursos: ['Cristal de Hielo', 'Agua Pura', 'Plata'],
-        descripcion: 'Un mundo helado donde se encuentran gemas y metales preciosos.'
+        descripcion: 'Un mundo helado donde se encuentran gemas y metales preciosos.',
+        bonus: 1.15
     },
     'bosque': {
         nombre: 'Mundo del Bosque',
         recursos: ['Madera Elfica', 'Piedra Lunar', 'Hierbas Curativas'],
-        descripcion: 'Un bosque antiguo lleno de recursos magicos y naturales.'
+        descripcion: 'Un bosque antiguo lleno de recursos magicos y naturales.',
+        bonus: 1.1
     },
     'desierto': {
         nombre: 'Mundo del Desierto',
         recursos: ['Oro del Desierto', 'Esencia Solar', 'Metal de Arena'],
-        descripcion: 'Un desierto interminable con recursos raros y valiosos.'
+        descripcion: 'Un desierto interminable con recursos raros y valiosos.',
+        bonus: 1.25
     }
 };
 
@@ -100,7 +106,8 @@ function inicializarRecursosJugador(idJugador) {
             'Esencia Solar': 0,
             'Metal de Arena': 0,
             'Energia Espectral': 100,
-            'Monedas Premium': 0
+            'Monedas Premium': 0,
+            'Aceleradores': 0
         };
     }
     return recursos[idJugador];
@@ -116,7 +123,6 @@ function inicializarInventario(idJugador) {
 function inicializarMisiones(idJugador) {
     if (!misiones[idJugador]) {
         misiones[idJugador] = {};
-        // Inicializar misiones disponibles
         for (let key in misionesDisponibles) {
             misiones[idJugador][key] = {
                 progreso: 0,
@@ -128,17 +134,28 @@ function inicializarMisiones(idJugador) {
     return misiones[idJugador];
 }
 
+function obtenerResurrecciones(idJugador) {
+    const hoy = new Date().toISOString().split('T')[0];
+    if (!resurreccionesDiarias[idJugador]) {
+        resurreccionesDiarias[idJugador] = { fecha: hoy, usadas: 0, max: 3 };
+    }
+    if (resurreccionesDiarias[idJugador].fecha !== hoy) {
+        resurreccionesDiarias[idJugador] = { fecha: hoy, usadas: 0, max: 3 };
+    }
+    return resurreccionesDiarias[idJugador];
+}
+
 // ========== RUTAS PRINCIPALES ==========
 app.get('/', (req, res) => {
     res.send(`
         <h1> Rogue-Social Server</h1>
-        <p> Sistema de FABRICACION y MISIONES activo</p>
+        <p> Sistema de FABRICACION, MISIONES, NIVEL y RESURRECCIONES</p>
         <p>Jugadores: ${Object.keys(jugadores).length}</p>
         <p>Fantasmas: ${Object.keys(fantasmas).length}</p>
         <hr>
         <p><strong>Mundos disponibles:</strong></p>
         <ul>
-            ${Object.values(mundos).map(m => `<li>${m.nombre}: ${m.recursos.join(', ')}</li>`).join('')}
+            ${Object.values(mundos).map(m => `<li>${m.nombre}: ${m.recursos.join(', ')} (Bonus: ${(m.bonus-1)*100}%)</li>`).join('')}
         </ul>
         <hr>
         <p><strong>Recetas de fabricacion:</strong></p>
@@ -243,7 +260,6 @@ app.post('/api/cambiar-mundo', (req, res) => {
         });
     }
 
-    // ========== ACTUALIZAR MISION ==========
     if (misiones[idJugador] && misiones[idJugador]['viajero'] && !misiones[idJugador]['viajero'].completada) {
         misiones[idJugador]['viajero'].progreso += 1;
         if (misiones[idJugador]['viajero'].progreso >= misionesDisponibles['viajero'].objetivo.cantidad) {
@@ -263,7 +279,7 @@ app.post('/api/cambiar-mundo', (req, res) => {
     });
 });
 
-// ========== RUTA DE RECOLECCION ==========
+// ========== RUTA DE RECOLECCION CON BONIFICACION Y NIVEL ==========
 app.post('/api/recolectar', (req, res) => {
     const { idJugador, recurso, cantidad } = req.body;
     
@@ -287,10 +303,15 @@ app.post('/api/recolectar', (req, res) => {
         inicializarRecursosJugador(idJugador);
     }
 
-    // ========== ACTUALIZAR MISION ==========
+    // BONIFICACION POR MUNDO
+    const bonus = mundoActual.bonus || 1;
+    const cantidadFinal = Math.floor(cantidad * bonus);
+    recursos[idJugador][recurso] = (recursos[idJugador][recurso] || 0) + cantidadFinal;
+
+    // ACTUALIZAR MISION
     if (misiones[idJugador] && misiones[idJugador]['recolectar_mineral'] && !misiones[idJugador]['recolectar_mineral'].completada) {
         if (recurso === 'Mineral de Fuego') {
-            misiones[idJugador]['recolectar_mineral'].progreso += cantidad;
+            misiones[idJugador]['recolectar_mineral'].progreso += cantidadFinal;
             if (misiones[idJugador]['recolectar_mineral'].progreso >= misionesDisponibles['recolectar_mineral'].objetivo.cantidad) {
                 misiones[idJugador]['recolectar_mineral'].completada = true;
                 console.log(` Mision 'recolectar_mineral' completada por ${jugador.nombre}`);
@@ -298,13 +319,21 @@ app.post('/api/recolectar', (req, res) => {
         }
     }
 
-    recursos[idJugador][recurso] = (recursos[idJugador][recurso] || 0) + cantidad;
-    
-    console.log(` ${jugador.nombre} recolecto ${cantidad} de ${recurso} en ${mundoActual.nombre}`);
+    // SISTEMA DE NIVEL (cada 50 recursos recolectados)
+    const totalRecursos = Object.values(recursos[idJugador]).reduce((a, b) => a + b, 0);
+    const nuevoNivel = Math.floor(totalRecursos / 50) + 1;
+    if (nuevoNivel > jugador.nivel) {
+        jugador.nivel = nuevoNivel;
+        console.log(` ${jugador.nombre} subio al nivel ${nuevoNivel}!`);
+    }
+
+    console.log(` ${jugador.nombre} recolecto ${cantidadFinal} de ${recurso} en ${mundoActual.nombre} (bonificacion: ${bonus}x)`);
     res.json({
-        mensaje: `Recolectaste ${cantidad} de ${recurso} en ${mundoActual.nombre}`,
+        mensaje: `Recolectaste ${cantidadFinal} de ${recurso} en ${mundoActual.nombre}`,
         recursos: recursos[idJugador],
-        misiones: misiones[idJugador]
+        misiones: misiones[idJugador],
+        nivel: jugador.nivel,
+        bonus: bonus
     });
 });
 
@@ -329,7 +358,6 @@ app.post('/api/fabricar', (req, res) => {
         });
     }
 
-    // Verificar si tiene suficientes recursos
     for (let recurso in receta.costo) {
         const cantidadNecesaria = receta.costo[recurso];
         const cantidadActual = recursos[idJugador]?.[recurso] || 0;
@@ -341,18 +369,15 @@ app.post('/api/fabricar', (req, res) => {
         }
     }
 
-    // Gastar recursos
     for (let recurso in receta.costo) {
         recursos[idJugador][recurso] -= receta.costo[recurso];
     }
 
-    // Añadir objeto al inventario
     if (!inventario[idJugador]) {
         inicializarInventario(idJugador);
     }
     inventario[idJugador][recetaNombre] = (inventario[idJugador][recetaNombre] || 0) + 1;
 
-    // ========== ACTUALIZAR MISION ==========
     if (misiones[idJugador] && misiones[idJugador]['fabricante'] && !misiones[idJugador]['fabricante'].completada) {
         misiones[idJugador]['fabricante'].progreso += 1;
         if (misiones[idJugador]['fabricante'].progreso >= misionesDisponibles['fabricante'].objetivo.cantidad) {
@@ -396,7 +421,6 @@ app.post('/api/reclamar-mision', (req, res) => {
         return res.status(400).json({ error: 'Mision ya reclamada' });
     }
 
-    // Entregar recompensa
     const recompensa = misionesDisponibles[misionKey].recompensa;
     for (let recurso in recompensa) {
         if (recursos[idJugador][recurso] !== undefined) {
@@ -415,6 +439,82 @@ app.post('/api/reclamar-mision', (req, res) => {
         recompensa: recompensa,
         recursos: recursos[idJugador],
         misiones: misiones[idJugador]
+    });
+});
+
+// ========== RUTAS DE RESURRECCIONES ==========
+app.get('/api/resurrecciones/:idJugador', (req, res) => {
+    const id = parseInt(req.params.idJugador);
+    const data = obtenerResurrecciones(id);
+    res.json(data);
+});
+
+app.post('/api/resucitar', (req, res) => {
+    const { idJugador } = req.body;
+    if (!idJugador) {
+        return res.status(400).json({ error: 'Falta idJugador' });
+    }
+
+    const jugador = jugadores[idJugador];
+    if (!jugador) {
+        return res.status(404).json({ error: 'Jugador no encontrado' });
+    }
+
+    const data = obtenerResurrecciones(idJugador);
+    
+    // Verificar si tiene aceleradores para usar (gasta 1 acelerador para una resurreccion extra)
+    let usarAcelerador = false;
+    if (data.usadas >= data.max) {
+        // Si no tiene aceleradores, error
+        if (!recursos[idJugador] || recursos[idJugador]['Aceleradores'] < 1) {
+            return res.status(400).json({ 
+                error: 'Limite de resurrecciones diarias alcanzado (3/3). Necesitas un Acelerador para continuar.',
+                usadas: data.usadas,
+                max: data.max,
+                aceleradores: recursos[idJugador]?.['Aceleradores'] || 0
+            });
+        }
+        // Gastar acelerador
+        recursos[idJugador]['Aceleradores'] -= 1;
+        usarAcelerador = true;
+        console.log(` ${jugador.nombre} uso un Acelerador para resucitar`);
+    }
+
+    data.usadas += 1;
+    
+    res.json({
+        mensaje: usarAcelerador ? 'Resurreccion exitosa usando Acelerador' : 'Resurreccion exitosa',
+        usadas: data.usadas,
+        max: data.max,
+        restantes: data.max - data.usadas,
+        aceleradores: recursos[idJugador]?.['Aceleradores'] || 0
+    });
+});
+
+// ========== RUTAS DE ACELERADORES ==========
+app.post('/api/obtener-acelerador', (req, res) => {
+    const { idJugador } = req.body;
+    if (!idJugador) {
+        return res.status(400).json({ error: 'Falta idJugador' });
+    }
+
+    const jugador = jugadores[idJugador];
+    if (!jugador) {
+        return res.status(404).json({ error: 'Jugador no encontrado' });
+    }
+
+    if (!recursos[idJugador]) {
+        inicializarRecursosJugador(idJugador);
+    }
+
+    // Dar 1 acelerador gratis por dia (ya implementado en la recoleccion)
+    // O se puede comprar con monedas premium
+    recursos[idJugador]['Aceleradores'] = (recursos[idJugador]['Aceleradores'] || 0) + 1;
+    
+    console.log(` ${jugador.nombre} obtuvo un Acelerador`);
+    res.json({
+        mensaje: 'Obtuviste 1 Acelerador',
+        aceleradores: recursos[idJugador]['Aceleradores']
     });
 });
 
@@ -492,7 +592,7 @@ app.get('/api/invocar/:idFantasma', (req, res) => {
 
 // ========== INICIAR SERVIDOR ==========
 app.listen(PORT, () => {
-    console.log(` Servidor con FABRICACION y MISIONES rodando en puerto ${PORT}`);
+    console.log(` Servidor con FABRICACION, MISIONES, NIVEL y RESURRECCIONES rodando en puerto ${PORT}`);
     console.log(` Recetas disponibles: ${Object.keys(recetas).join(', ')}`);
     console.log(` Misiones disponibles: ${Object.keys(misionesDisponibles).join(', ')}`);
 });
